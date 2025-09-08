@@ -7,7 +7,7 @@ st.set_page_config(page_title="Promedios por estación", layout="wide")
 st.title("📊 Comparación de variables por escenario en una estación")
 
 # 📥 Cargar datos
-df = pd.read_csv('data/df_anual_preprocesado.csv', parse_dates=['Fecha'])
+df = pd.read_csv('df_anual_preprocesado.csv', parse_dates=['Fecha'])
 
 # 🎯 Extraer variables y estaciones
 variables = [col for col in df.columns if col not in ['Escenario', 'ID_SIGA', 'Fecha']]
@@ -67,3 +67,4 @@ st.download_button(
     data=df_promedios.to_csv(index=False),
     file_name=f"promedios_{estacion}_{nombre_variable}_{tipo_promedio.lower().replace(' ', '_')}.csv"
 )
+
