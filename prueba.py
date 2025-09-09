@@ -8,13 +8,28 @@ st.title("📊 Comparación de variables por escenario en una estación")
 
 # 📥 Cargar datos
 df = pd.read_csv('df_anual_preprocesado.csv', parse_dates=['Fecha'])
+df_puntos = pd.read_excel('Puntos_SIGA.xlsx')  # Nuevo archivo con metadatos
 
-# 🎯 Extraer variables y estaciones
-variables = [col for col in df.columns if col not in ['Escenario', 'ID_SIGA', 'Fecha']]
-estaciones = sorted(df['ID_SIGA'].unique())
+# 🔗 Unir metadatos
+df = df.merge(df_puntos, on='ID_SIGA', how='left')
 
-# 🎛️ Selección de estación y tipo de promedio
-estacion = st.selectbox("Selecciona la estación", estaciones)
+# 🎯 Extraer variables
+variables = [col for col in df.columns if col not in ['Escenario', 'ID_SIGA', 'Fecha', 'Cuenca', 'Subcuenca']]
+cuencas = sorted(df['Cuenca'].dropna().unique())
+
+# 🎛️ Selección de cuenca y estación
+cuenca_seleccionada = st.selectbox("Selecciona la cuenca", cuencas)
+
+# Estaciones disponibles en esa cuenca
+estaciones_filtradas = df[df['Cuenca'] == cuenca_seleccionada][['ID_SIGA', 'Subcuenca']].drop_duplicates()
+estaciones_opciones = {
+    f"{row['ID_SIGA']} - {row['Subcuenca']}": row['ID_SIGA']
+    for _, row in estaciones_filtradas.iterrows()
+}
+estacion_label = st.selectbox("Selecciona la estación", list(estaciones_opciones.keys()))
+estacion = estaciones_opciones[estacion_label]
+
+# 🎛️ Tipo de promedio
 tipo_promedio = st.radio("Tipo de promedio", ["Total", "Por año"])
 
 # 🔍 Filtrar datos por estación
@@ -23,7 +38,7 @@ df_filtrado = df[df['ID_SIGA'] == estacion].copy()
 # 📊 Calcular promedios
 if tipo_promedio == "Total":
     df_promedios = df_filtrado.groupby('Escenario')[variables].mean().reset_index()
-    titulo = f"Promedio total de variables por escenario en estación {estacion}"
+    titulo = f"Promedio total de variables por escenario en estación {estacion_label}"
 
     # 📈 Visualización de todas las variables
     df_melt = df_promedios.melt(id_vars='Escenario', var_name='Variable', value_name='Promedio')
@@ -41,7 +56,7 @@ else:
     df_filtrado['Año'] = df_filtrado['Fecha'].dt.year
     variable_seleccionada = st.selectbox("Selecciona la variable a visualizar", variables)
     df_promedios = df_filtrado.groupby(['Año', 'Escenario'])[variable_seleccionada].mean().reset_index()
-    titulo = f"Promedio anual de {variable_seleccionada} por escenario en estación {estacion}"
+    titulo = f"Promedio anual de {variable_seleccionada} por escenario en estación {estacion_label}"
 
     # 📈 Visualización de una sola variable
     fig = px.line(
@@ -67,4 +82,3 @@ st.download_button(
     data=df_promedios.to_csv(index=False),
     file_name=f"promedios_{estacion}_{nombre_variable}_{tipo_promedio.lower().replace(' ', '_')}.csv"
 )
-
